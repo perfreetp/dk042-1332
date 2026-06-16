@@ -75,9 +75,12 @@ export default function Rollcall() {
   }, [rollcallRecords]);
 
   const pendingChildren = useMemo(() => {
-    return mockChildren
-      .filter((c) => rollcallRecords.find((r) => r.childId === c.id)?.status === 'pending');
-  }, [rollcallRecords]);
+    return mockChildren.filter((c) => {
+      const record = rollcallRecords.find((r) => r.childId === c.id);
+      const matchesClass = activeClassId === 'all' || c.classId === activeClassId;
+      return record?.status === 'pending' && matchesClass;
+    });
+  }, [rollcallRecords, activeClassId]);
 
   const filteredChildren = useMemo(() => {
     if (activeClassId === 'all') return mockChildren;
@@ -195,7 +198,10 @@ export default function Rollcall() {
             全部班级
           </button>
           {mockClasses.map((cls) => {
-            const count = mockChildren.filter((c) => c.classId === cls.id).length;
+            const classChildren = mockChildren.filter((c) => c.classId === cls.id);
+            const classPending = classChildren.filter(
+              (c) => rollcallRecords.find((r) => r.childId === c.id)?.status === 'pending'
+            ).length;
             return (
               <button
                 key={cls.id}
@@ -213,7 +219,7 @@ export default function Rollcall() {
                 />
                 {cls.name}
                 <span className={`text-sm ${activeClassId === cls.id ? 'text-white/80' : 'text-gray-400'}`}>
-                  ({count})
+                  ({classPending > 0 ? `待${classPending}/` : ''}{classChildren.length})
                 </span>
               </button>
             );

@@ -15,14 +15,27 @@ import {
   Clock,
   User,
   X,
+  ChevronDown,
+  ChevronUp,
+  History,
+  Backpack,
+  GlassWater,
+  Shirt,
+  Package,
+  AlertCircle,
+  Car,
 } from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
 import { mockClasses, mockChildren } from '@/data/mockData';
+import type { HistoryRecord } from '@/types';
 
 export default function Review() {
   const navigate = useNavigate();
   const sigCanvasRef = useRef<SignatureCanvas>(null);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [expandedArea, setExpandedArea] = useState<string | null>(null);
+  const [showHistoryList, setShowHistoryList] = useState(false);
+  const [viewingHistory, setViewingHistory] = useState<HistoryRecord | null>(null);
 
   const {
     inspectionAreas,
@@ -33,6 +46,9 @@ export default function Review() {
     reviewTime,
     currentTime,
     reviewerName: storedReviewerName,
+    areaInspectionRecords,
+    historyRecords,
+    currentTrip,
     setSignatureData,
     setReviewerName: storeSetReviewerName,
     completeReview,
@@ -111,6 +127,302 @@ export default function Review() {
     hour: '2-digit',
     minute: '2-digit',
   });
+
+  const getRecordForArea = (areaId: string) => {
+    return areaInspectionRecords.find((r) => r.areaId === areaId);
+  };
+
+  const formatTime = (d: Date | string) => {
+    const date = typeof d === 'string' ? new Date(d) : d;
+    return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  };
+
+  if (viewingHistory) {
+    const h = viewingHistory;
+    const hInspDone = h.inspectionRecords.length;
+    const hRollcallDone = h.rollcallRecords.filter((r) => r.status !== 'pending').length;
+    const hPending = mockChildren.filter((c) => {
+      const r = h.rollcallRecords.find((rr) => rr.childId === c.id);
+      return r?.status === 'pending';
+    });
+    return (
+      <div className="w-full h-full flex flex-col bg-gradient-to-br from-slate-50 to-slate-100">
+        <div className="px-8 py-5 bg-gradient-to-r from-gray-600 to-gray-800 text-white">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => setViewingHistory(null)}
+                className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center hover:bg-white/30 transition-colors backdrop-blur-sm"
+              >
+                <ArrowLeft size={28} />
+              </button>
+              <div>
+                <h1 className="text-3xl font-black">历史复核详情</h1>
+                <p className="text-lg opacity-90 mt-1 flex items-center gap-2">
+                  <Car size={18} />
+                  {h.tripInfo.plateNumber} · {h.tripInfo.tripId}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 bg-white/20 px-6 py-3 rounded-2xl">
+              <Clock size={28} />
+              <span className="text-3xl font-black tabular-nums">{formatTime(h.reviewTime)}</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-auto p-8">
+          <div className="max-w-6xl mx-auto">
+            <div className="grid grid-cols-4 gap-6 mb-8">
+              <div className="card-base">
+                <p className="text-gray-500 mb-1">复核人</p>
+                <p className="text-2xl font-black text-gray-800 flex items-center gap-2">
+                  <User size={22} />
+                  {h.reviewerName}
+                </p>
+              </div>
+              <div className="card-base">
+                <p className="text-gray-500 mb-1">放行时间</p>
+                <p className="text-2xl font-black text-gray-800 tabular-nums">
+                  {new Date(h.reviewTime).toLocaleString('zh-CN')}
+                </p>
+              </div>
+              <div className="card-base">
+                <p className="text-gray-500 mb-1">检查记录</p>
+                <p className="text-2xl font-black text-primary-600">{hInspDone}/6 区域</p>
+              </div>
+              <div className="card-base">
+                <p className="text-gray-500 mb-1">交接情况</p>
+                <p className="text-2xl font-black text-secondary-600">{hRollcallDone}/{h.rollcallRecords.length} 人</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-8">
+              <div className="card-base">
+                <h3 className="text-2xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+                  <ClipboardCheck size={28} className="text-primary-500" />
+                  检查记录明细
+                </h3>
+                <div className="space-y-3">
+                  {h.inspectionRecords
+                    .slice()
+                    .sort((a, b) => new Date(a.confirmTime).getTime() - new Date(b.confirmTime).getTime())
+                    .map((rec) => (
+                      <div key={rec.areaId} className="p-4 rounded-2xl bg-success-50 border-2 border-success-200">
+                        <div className="flex items-center justify-between mb-2">
+                          <p className="text-xl font-bold text-gray-800">{rec.areaName}</p>
+                          <p className="text-sm text-gray-500 tabular-nums">{formatTime(rec.confirmTime)}</p>
+                        </div>
+                        <div className="flex flex-wrap gap-3 text-base">
+                          <span className="px-3 py-1 bg-white rounded-full text-gray-700 font-medium">
+                            空座 {rec.emptySeats} 个
+                          </span>
+                          {rec.hasBag && (
+                            <span className="px-3 py-1 bg-amber-100 text-amber-700 rounded-full font-medium flex items-center gap-1">
+                              <Backpack size={16} />书包
+                            </span>
+                          )}
+                          {rec.hasBottle && (
+                            <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full font-medium flex items-center gap-1">
+                              <GlassWater size={16} />水杯
+                            </span>
+                          )}
+                          {rec.hasCoat && (
+                            <span className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full font-medium flex items-center gap-1">
+                              <Shirt size={16} />外套
+                            </span>
+                          )}
+                          {rec.hasOther && (
+                            <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full font-medium flex items-center gap-1">
+                              <Package size={16} />{rec.otherDesc || '其他'}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              </div>
+
+              <div className="space-y-8">
+                <div className="card-base">
+                  <h3 className="text-2xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+                    <Users size={28} className="text-secondary-500" />
+                    儿童交接情况
+                  </h3>
+                  {h.unresolvedCount > 0 && (
+                    <div className="p-4 bg-danger-50 rounded-2xl border-2 border-danger-200 mb-4">
+                      <p className="text-danger-700 font-bold text-lg mb-1 flex items-center gap-2">
+                        <AlertCircle size={22} />
+                        放行时有 {h.unresolvedCount} 名儿童未完成交接
+                      </p>
+                      <p className="text-danger-600">{h.unresolvedDetails}</p>
+                    </div>
+                  )}
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="p-4 bg-success-50 rounded-2xl text-center">
+                      <p className="text-sm text-gray-500 mb-1">已交家长</p>
+                      <p className="text-3xl font-black text-success-600">
+                        {h.rollcallRecords.filter((r) => r.status === 'handed_over').length}
+                      </p>
+                    </div>
+                    <div className="p-4 bg-secondary-50 rounded-2xl text-center">
+                      <p className="text-sm text-gray-500 mb-1">已进班</p>
+                      <p className="text-3xl font-black text-secondary-600">
+                        {h.rollcallRecords.filter((r) => r.status === 'in_class').length}
+                      </p>
+                    </div>
+                    <div className="p-4 bg-amber-50 rounded-2xl text-center">
+                      <p className="text-sm text-gray-500 mb-1">临时请假</p>
+                      <p className="text-3xl font-black text-amber-600">
+                        {h.rollcallRecords.filter((r) => r.status === 'on_leave').length}
+                      </p>
+                    </div>
+                  </div>
+                  {hPending.length > 0 && (
+                    <div className="mt-4">
+                      <p className="text-gray-600 text-base mb-2">未交接儿童名单：</p>
+                      <div className="flex flex-wrap gap-2">
+                        {hPending.map((c) => {
+                          const cls = mockClasses.find((cl) => cl.id === c.classId);
+                          return (
+                            <span
+                              key={c.id}
+                              className="inline-flex items-center gap-1 px-3 py-1.5 bg-white rounded-xl text-danger-600 font-bold shadow-sm border border-danger-200"
+                            >
+                              <span
+                                className="w-2.5 h-2.5 rounded-full"
+                                style={{ backgroundColor: cls?.color || '#888' }}
+                              />
+                              {c.name}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="card-base">
+                  <h3 className="text-2xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+                    <FileCheck size={28} className="text-success-500" />
+                    复核人签名
+                  </h3>
+                  {h.signatureData ? (
+                    <div className="p-6 bg-gray-50 rounded-2xl">
+                      <p className="text-lg text-gray-500 mb-3">
+                        <User size={18} className="inline mr-1" />
+                        复核人：<span className="font-bold text-gray-800">{h.reviewerName}</span>
+                      </p>
+                      <img src={h.signatureData} alt="签名" className="mx-auto h-32" />
+                    </div>
+                  ) : (
+                    <p className="text-gray-400">无签名数据</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (showHistoryList) {
+    return (
+      <div className="w-full h-full flex flex-col bg-gradient-to-br from-slate-50 to-slate-100">
+        <div className="px-8 py-5 bg-gradient-to-r from-gray-600 to-gray-800 text-white">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => setShowHistoryList(false)}
+                className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center hover:bg-white/30 transition-colors backdrop-blur-sm"
+              >
+                <ArrowLeft size={28} />
+              </button>
+              <div>
+                <h1 className="text-3xl font-black">复核历史记录</h1>
+                <p className="text-lg opacity-90 mt-1">共 {historyRecords.length} 趟记录</p>
+              </div>
+            </div>
+            <button
+              onClick={() => navigate('/')}
+              className="px-6 py-3 rounded-2xl bg-white/20 hover:bg-white/30 transition-colors font-bold text-lg flex items-center gap-2"
+            >
+              <Home size={22} />
+              返回首页
+            </button>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-auto p-8">
+          <div className="max-w-5xl mx-auto">
+            {historyRecords.length === 0 ? (
+              <div className="card-base text-center py-20">
+                <History size={80} className="mx-auto text-gray-300 mb-4" />
+                <p className="text-2xl font-bold text-gray-400">暂无历史记录</p>
+                <p className="text-lg text-gray-400 mt-2">完成放行后，记录会自动保存在此</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {historyRecords.map((h) => {
+                  const inspCount = h.inspectionRecords.length;
+                  const rcDone = h.rollcallRecords.filter((r) => r.status !== 'pending').length;
+                  return (
+                    <button
+                      key={h.tripId}
+                      onClick={() => setViewingHistory(h)}
+                      className="w-full card-base p-6 text-left hover:scale-[1.01] transition-all hover:ring-4 hover:ring-success-200"
+                    >
+                      <div className="flex items-center gap-6">
+                        <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-success-400 to-success-600 text-white flex items-center justify-center shadow-lg flex-shrink-0">
+                          <ShieldCheck size={44} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-3 mb-2">
+                            <h3 className="text-2xl font-black text-gray-800">{h.tripInfo.plateNumber}</h3>
+                            <span className="px-3 py-1 rounded-full bg-gray-100 text-gray-600 text-sm font-bold">
+                              {h.tripInfo.tripId}
+                            </span>
+                            {h.unresolvedCount > 0 && (
+                              <span className="px-3 py-1 rounded-full bg-danger-100 text-danger-600 text-sm font-bold flex items-center gap-1">
+                                <AlertTriangle size={14} />
+                                未交接 {h.unresolvedCount} 人
+                              </span>
+                            )}
+                          </div>
+                          <div className="grid grid-cols-4 gap-4 text-lg">
+                            <div className="flex items-center gap-2 text-gray-600">
+                              <User size={16} />
+                              复核：{h.reviewerName}
+                            </div>
+                            <div className="flex items-center gap-2 text-gray-600">
+                              <Clock size={16} />
+                              {new Date(h.reviewTime).toLocaleString('zh-CN')}
+                            </div>
+                            <div className="flex items-center gap-2 text-primary-600 font-bold">
+                              <ClipboardCheck size={16} />
+                              {inspCount}/6 检查
+                            </div>
+                            <div className="flex items-center gap-2 text-secondary-600 font-bold">
+                              <Users size={16} />
+                              {rcDone}/{h.rollcallRecords.length} 交接
+                            </div>
+                          </div>
+                        </div>
+                        <div className="w-12 h-12 rounded-xl bg-gray-100 flex items-center justify-center flex-shrink-0">
+                          <ArrowLeft size={24} className="text-gray-400 rotate-180" />
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (reviewCompleted) {
     return (
@@ -195,9 +507,18 @@ export default function Review() {
               <p className="text-lg opacity-90 mt-1">保安/值班园长审核签名放行</p>
             </div>
           </div>
-          <div className="flex items-center gap-3 bg-white/20 px-6 py-3 rounded-2xl">
-            <Clock size={28} />
-            <span className="text-3xl font-black tabular-nums">{timeStr}</span>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => setShowHistoryList(true)}
+              className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-white/20 hover:bg-white/30 transition-colors font-bold text-lg"
+            >
+              <History size={22} />
+              历史记录 ({historyRecords.length})
+            </button>
+            <div className="flex items-center gap-3 bg-white/20 px-6 py-3 rounded-2xl">
+              <Clock size={28} />
+              <span className="text-3xl font-black tabular-nums">{timeStr}</span>
+            </div>
           </div>
         </div>
       </div>
@@ -317,6 +638,10 @@ export default function Review() {
               <p className="text-lg text-gray-500">
                 {selectedClassNames.length > 0 ? selectedClassNames.join('、') : '请选择班级'}
               </p>
+              <p className="text-sm text-gray-400 mt-1 flex items-center justify-center gap-1">
+                <Car size={14} />
+                {currentTrip.plateNumber} · {currentTrip.tripId.slice(-8)}
+              </p>
             </div>
           </div>
 
@@ -340,41 +665,104 @@ export default function Review() {
               )}
 
               <div className="space-y-3">
-                {inspectionAreas.map((area) => (
-                  <div
-                    key={area.id}
-                    className={`p-4 rounded-2xl border-2 flex items-center justify-between ${
-                      area.confirmed
-                        ? 'bg-success-50 border-success-300'
-                        : 'bg-gray-50 border-gray-200'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      {area.confirmed ? (
-                        <div className="w-10 h-10 rounded-xl bg-success-500 text-white flex items-center justify-center">
-                          <CheckCircle2 size={24} />
+                {inspectionAreas.map((area) => {
+                  const record = getRecordForArea(area.id);
+                  const isExpanded = expandedArea === area.id;
+                  return (
+                    <div
+                      key={area.id}
+                      className={`rounded-2xl border-2 overflow-hidden ${
+                        area.confirmed
+                          ? 'bg-success-50 border-success-300'
+                          : 'bg-gray-50 border-gray-200'
+                      }`}
+                    >
+                      <button
+                        onClick={() => setExpandedArea(isExpanded ? null : area.id)}
+                        className="w-full p-4 flex items-center justify-between"
+                      >
+                        <div className="flex items-center gap-3">
+                          {area.confirmed ? (
+                            <div className="w-10 h-10 rounded-xl bg-success-500 text-white flex items-center justify-center">
+                              <CheckCircle2 size={24} />
+                            </div>
+                          ) : (
+                            <div className="w-10 h-10 rounded-xl bg-gray-300 text-white flex items-center justify-center">
+                              <Clock size={20} />
+                            </div>
+                          )}
+                          <div className="text-left">
+                            <p className="text-xl font-bold text-gray-800">{area.name}</p>
+                            <p className="text-sm text-gray-500">
+                              空座 {area.emptySeats} 个
+                              {area.hasBag && ' · 书包'}
+                              {area.hasBottle && ' · 水杯'}
+                              {area.hasCoat && ' · 外套'}
+                              {area.hasOther && ` · ${area.otherDesc || '其他物品'}`}
+                            </p>
+                          </div>
                         </div>
-                      ) : (
-                        <div className="w-10 h-10 rounded-xl bg-gray-300 text-white flex items-center justify-center">
-                          <Clock size={20} />
+                        <div className="flex items-center gap-3">
+                          {record && (
+                            <span className="text-sm text-gray-500 tabular-nums">
+                              {formatTime(record.confirmTime)}
+                            </span>
+                          )}
+                          <span className={`text-lg font-bold ${area.confirmed ? 'text-success-600' : 'text-gray-400'}`}>
+                            {area.confirmed ? '已确认' : '待检查'}
+                          </span>
+                          {area.confirmed && (
+                            <div className="w-8 h-8 rounded-lg bg-white/80 flex items-center justify-center">
+                              {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                            </div>
+                          )}
+                        </div>
+                      </button>
+                      {isExpanded && area.confirmed && record && (
+                        <div className="px-4 pb-4 border-t-2 border-success-200 pt-3">
+                          <div className="grid grid-cols-2 gap-4 mb-3">
+                            <div className="p-3 bg-white rounded-xl">
+                              <p className="text-sm text-gray-500">空座数</p>
+                              <p className="text-2xl font-black text-primary-600">{record.emptySeats} 个</p>
+                            </div>
+                            <div className="p-3 bg-white rounded-xl">
+                              <p className="text-sm text-gray-500">确认时间</p>
+                              <p className="text-xl font-bold text-gray-800 tabular-nums">{formatTime(record.confirmTime)}</p>
+                            </div>
+                          </div>
+                          <p className="text-sm text-gray-500 mb-2">遗留物情况：</p>
+                          <div className="flex flex-wrap gap-2">
+                            {!record.hasBag && !record.hasBottle && !record.hasCoat && !record.hasOther && (
+                              <span className="px-4 py-2 bg-success-100 text-success-700 rounded-xl font-bold">
+                                ✓ 无遗留物
+                              </span>
+                            )}
+                            {record.hasBag && (
+                              <span className="px-4 py-2 bg-amber-100 text-amber-700 rounded-xl font-bold flex items-center gap-1">
+                                <Backpack size={16} />书包
+                              </span>
+                            )}
+                            {record.hasBottle && (
+                              <span className="px-4 py-2 bg-blue-100 text-blue-700 rounded-xl font-bold flex items-center gap-1">
+                                <GlassWater size={16} />水杯
+                              </span>
+                            )}
+                            {record.hasCoat && (
+                              <span className="px-4 py-2 bg-purple-100 text-purple-700 rounded-xl font-bold flex items-center gap-1">
+                                <Shirt size={16} />外套
+                              </span>
+                            )}
+                            {record.hasOther && (
+                              <span className="px-4 py-2 bg-gray-100 text-gray-700 rounded-xl font-bold flex items-center gap-1">
+                                <Package size={16} />{record.otherDesc || '其他物品'}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       )}
-                      <div>
-                        <p className="text-xl font-bold text-gray-800">{area.name}</p>
-                        <p className="text-sm text-gray-500">
-                          空座 {area.emptySeats} 个
-                          {area.hasBag && ' · 书包'}
-                          {area.hasBottle && ' · 水杯'}
-                          {area.hasCoat && ' · 外套'}
-                          {area.hasOther && ` · ${area.otherDesc || '其他物品'}`}
-                        </p>
-                      </div>
                     </div>
-                    <span className={`text-lg font-bold ${area.confirmed ? 'text-success-600' : 'text-gray-400'}`}>
-                      {area.confirmed ? '已确认' : '待检查'}
-                    </span>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
               {inspectionStats.leftoverCount > 0 && (
@@ -540,10 +928,14 @@ export default function Review() {
                 <ShieldCheck size={56} className="text-white" />
               </div>
               <h2 className="text-4xl font-black text-gray-800 mb-3">确认放行本车？</h2>
-              <p className="text-xl text-gray-500">确认后将完成本次安全检查闭环</p>
+              <p className="text-xl text-gray-500">确认后将完成本次安全检查闭环，记录自动保存到历史</p>
             </div>
 
             <div className="bg-gray-50 rounded-2xl p-6 mb-8 space-y-3">
+              <div className="flex justify-between">
+                <span className="text-lg text-gray-500">车牌</span>
+                <span className="text-lg font-bold text-gray-800">{currentTrip.plateNumber}</span>
+              </div>
               <div className="flex justify-between">
                 <span className="text-lg text-gray-500">离车检查</span>
                 <span className="text-lg font-bold text-success-600">{inspectionStats.confirmed}/{inspectionStats.total} 区域已确认</span>

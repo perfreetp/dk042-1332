@@ -24,6 +24,18 @@ export interface InspectionArea {
   confirmed: boolean;
 }
 
+export interface AreaInspectionRecord {
+  areaId: string;
+  areaName: string;
+  emptySeats: number;
+  hasBag: boolean;
+  hasBottle: boolean;
+  hasCoat: boolean;
+  hasOther: boolean;
+  otherDesc: string;
+  confirmTime: Date;
+}
+
 export type HandoverStatus = 'pending' | 'handed_over' | 'in_class' | 'on_leave';
 
 export interface RollcallRecord {
@@ -36,6 +48,28 @@ export type InspectionStatus = 'idle' | 'selecting_class' | 'inspecting' | 'warn
 
 export type VehicleStatus = 'driving' | 'stopped' | 'inspection_done' | 'all_done';
 
+export interface TripInfo {
+  tripId: string;
+  plateNumber: string;
+  routeName: string;
+  driverName: string;
+  escortName: string;
+  startTime: Date;
+}
+
+export interface HistoryRecord {
+  tripId: string;
+  tripInfo: TripInfo;
+  selectedClasses: string[];
+  inspectionRecords: AreaInspectionRecord[];
+  rollcallRecords: RollcallRecord[];
+  reviewerName: string;
+  signatureData: string | null;
+  reviewTime: Date;
+  unresolvedCount: number;
+  unresolvedDetails: string;
+}
+
 export interface AppState {
   vehicleStatus: VehicleStatus;
   currentTime: Date;
@@ -44,10 +78,13 @@ export interface AppState {
   inspectionStatus: InspectionStatus;
   currentAreaIndex: number;
   rollcallRecords: RollcallRecord[];
+  areaInspectionRecords: AreaInspectionRecord[];
   reviewerName: string;
   signatureData: string | null;
   reviewCompleted: boolean;
   reviewTime: Date | null;
+  currentTrip: TripInfo;
+  historyRecords: HistoryRecord[];
 }
 
 export interface AppActions {

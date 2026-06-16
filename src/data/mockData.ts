@@ -1,4 +1,4 @@
-import type { ClassInfo, Child, InspectionArea } from '@/types';
+import type { ClassInfo, Child, InspectionArea, TripInfo } from '@/types';
 
 export const mockClasses: ClassInfo[] = [
   { id: 'c1', name: '小班一班', color: '#FF6B6B' },
@@ -37,3 +37,24 @@ export const mockChildren: Child[] = childNames.map((name, index) => ({
   avatar: generateAvatar(name),
   classId: mockClasses[index % mockClasses.length].id,
 }));
+
+export function generateTripId(): string {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, '0');
+  const d = String(now.getDate()).padStart(2, '0');
+  const h = String(now.getHours()).padStart(2, '0');
+  const mi = String(now.getMinutes()).padStart(2, '0');
+  return `TRIP-${y}${m}${d}-${h}${mi}`;
+}
+
+export function createDefaultTrip(): TripInfo {
+  return {
+    tripId: generateTripId(),
+    plateNumber: '沪A·88X66',
+    routeName: '阳光花园 → 小太阳幼儿园',
+    driverName: '张师傅',
+    escortName: '王老师',
+    startTime: new Date(),
+  };
+}

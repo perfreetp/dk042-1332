@@ -10,8 +10,14 @@ import {
   CircleDot,
   Clock,
   ArrowRight,
+  Bus,
+  Navigation,
+  User,
+  GraduationCap,
+  History,
 } from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
+import { mockClasses } from '@/data/mockData';
 
 export default function Home() {
   const navigate = useNavigate();
@@ -22,6 +28,9 @@ export default function Home() {
     rollcallRecords,
     reviewCompleted,
     inspectionStatus,
+    selectedClasses,
+    currentTrip,
+    historyRecords,
     updateTime,
   } = useAppStore();
 
@@ -49,6 +58,18 @@ export default function Home() {
     const done = rollcallRecords.filter((r) => r.status !== 'pending').length;
     return { done, total: rollcallRecords.length, percent: Math.round((done / rollcallRecords.length) * 100) };
   }, [rollcallRecords]);
+
+  const selectedClassNames = useMemo(() => {
+    return selectedClasses.map((id) => mockClasses.find((c) => c.id === id)?.name || '').filter(Boolean);
+  }, [selectedClasses]);
+
+  const nextRoute = useMemo(() => {
+    if (!reviewCompleted) {
+      if (inspectionStatus === 'selecting_class' || inspectionProgress.percent < 100) return '/inspection';
+      return '/rollcall';
+    }
+    return '/review';
+  }, [reviewCompleted, inspectionStatus, inspectionProgress.percent]);
 
   const statusConfig = {
     driving: { label: '行驶中', color: 'bg-blue-500', icon: Car, text: '车辆行驶中' },
@@ -100,10 +121,62 @@ export default function Home() {
 
       <div className="flex-1 p-8 overflow-auto">
         <div className="max-w-7xl mx-auto">
-          <h1 className="text-4xl font-black text-secondary-600 mb-8 flex items-center gap-3">
+          <h1 className="text-4xl font-black text-secondary-600 mb-6 flex items-center gap-3">
             <ShieldCheck size={48} className="text-primary-500" />
             校车儿童安全巡检系统
           </h1>
+
+          <button
+            onClick={() => navigate(nextRoute)}
+            className="w-full card-base mb-8 p-6 text-left hover:scale-[1.01] transition-all duration-300 bg-gradient-to-r from-secondary-600 via-secondary-700 to-primary-600 text-white border-none shadow-xl"
+          >
+            <div className="flex items-center gap-6">
+              <div className="w-20 h-20 rounded-2xl bg-white/20 flex items-center justify-center backdrop-blur-sm flex-shrink-0">
+                <Bus size={44} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-3 mb-2">
+                  <h2 className="text-3xl font-black">本趟任务</h2>
+                  <span className="px-4 py-1 rounded-full bg-white/20 text-lg font-bold">
+                    {currentTrip.tripId.slice(-11)}
+                  </span>
+                </div>
+                <div className="grid grid-cols-4 gap-4 text-lg">
+                  <div className="flex items-center gap-2 opacity-90">
+                    <Car size={20} />
+                    <span className="font-bold">{currentTrip.plateNumber}</span>
+                  </div>
+                  <div className="flex items-center gap-2 opacity-90">
+                    <Navigation size={20} />
+                    <span className="font-bold truncate">{currentTrip.routeName}</span>
+                  </div>
+                  <div className="flex items-center gap-2 opacity-90">
+                    <User size={20} />
+                    <span className="font-bold">司机 {currentTrip.driverName} · 随车 {currentTrip.escortName}</span>
+                  </div>
+                  <div className="flex items-center gap-2 opacity-90">
+                    <GraduationCap size={20} />
+                    <span className="font-bold truncate">
+                      {selectedClassNames.length > 0 ? selectedClassNames.join('、') : '未选择班级'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 flex-shrink-0">
+                <div className="text-right">
+                  <p className="text-xl font-bold opacity-90">
+                    {inspectionProgress.confirmed}/{inspectionProgress.total} 检查 · {rollcallProgress.done}/{rollcallProgress.total} 交接
+                  </p>
+                  <p className="text-lg opacity-75">
+                    {reviewCompleted ? '已完成放行' : '点击继续当前流程 →'}
+                  </p>
+                </div>
+                <div className="w-14 h-14 rounded-2xl bg-white/25 flex items-center justify-center">
+                  <ArrowRight size={32} />
+                </div>
+              </div>
+            </div>
+          </button>
 
           <div className="grid grid-cols-3 gap-8 mb-10">
             <button
@@ -202,7 +275,7 @@ export default function Home() {
               </div>
               <h2 className="text-3xl font-black text-gray-800 mb-2">园门口复核</h2>
               <p className="text-lg text-gray-500 mb-4">保安/园长签名放行</p>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 mb-3">
                 {reviewCompleted ? (
                   <div className="flex items-center gap-2 text-success-600 text-xl font-bold">
                     <CheckCircle2 size={28} />
@@ -214,6 +287,10 @@ export default function Home() {
                     等待复核
                   </div>
                 )}
+              </div>
+              <div className="flex items-center gap-2 text-gray-500 text-base">
+                <History size={18} />
+                历史记录：{historyRecords.length} 趟
               </div>
             </button>
           </div>
@@ -258,7 +335,7 @@ export default function Home() {
                 </div>
                 <div className="p-4 bg-white rounded-2xl border-l-4 border-secondary-500">
                   <p className="text-lg font-bold text-secondary-700">📝 全程记录</p>
-                  <p className="text-base text-gray-600 mt-1">所有操作均自动记录，形成完整安全闭环。</p>
+                  <p className="text-base text-gray-600 mt-1">所有操作均自动记录，形成完整安全闭环，历史记录可随时回溯。</p>
                 </div>
               </div>
             </div>
