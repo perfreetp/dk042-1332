@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ClipboardCheck,
@@ -9,6 +9,7 @@ import {
   CheckCircle2,
   CircleDot,
   Clock,
+  ArrowRight,
 } from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
 
@@ -20,13 +21,24 @@ export default function Home() {
     inspectionAreas,
     rollcallRecords,
     reviewCompleted,
+    inspectionStatus,
     updateTime,
   } = useAppStore();
+
+  const hasAutoNavigated = useRef(false);
 
   useEffect(() => {
     const timer = setInterval(() => updateTime(), 1000);
     return () => clearInterval(timer);
   }, [updateTime]);
+
+  useEffect(() => {
+    if (vehicleStatus === 'stopped' && inspectionStatus === 'selecting_class' && !reviewCompleted && !hasAutoNavigated.current) {
+      hasAutoNavigated.current = true;
+      const timer = setTimeout(() => navigate('/inspection', { replace: true }), 300);
+      return () => clearTimeout(timer);
+    }
+  }, [vehicleStatus, inspectionStatus, reviewCompleted, navigate]);
 
   const inspectionProgress = useMemo(() => {
     const confirmed = inspectionAreas.filter((a) => a.confirmed).length;
@@ -96,10 +108,17 @@ export default function Home() {
           <div className="grid grid-cols-3 gap-8 mb-10">
             <button
               onClick={() => navigate('/inspection')}
-              className="card-base group hover:scale-[1.02] transition-all duration-300 text-left border-4 border-transparent hover:border-primary-300"
+              className={`card-base group hover:scale-[1.02] transition-all duration-300 text-left border-4 ${
+                vehicleStatus === 'stopped' && !reviewCompleted
+                  ? 'border-primary-400 ring-2 ring-primary-200'
+                  : 'border-transparent hover:border-primary-300'
+              }`}
             >
-              <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center mb-6 shadow-lg group-hover:shadow-primary-300/50 transition-shadow">
+              <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center mb-6 shadow-lg group-hover:shadow-primary-300/50 transition-shadow relative">
                 <ClipboardCheck size={48} className="text-white" />
+                {vehicleStatus === 'stopped' && !reviewCompleted && (
+                  <span className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-danger-500 animate-pulse" />
+                )}
               </div>
               <h2 className="text-3xl font-black text-gray-800 mb-2">离车检查</h2>
               <p className="text-lg text-gray-500 mb-4">按区域巡检空座和遗留物</p>
@@ -114,20 +133,37 @@ export default function Home() {
                   {inspectionProgress.confirmed}/{inspectionProgress.total}
                 </span>
               </div>
-              {inspectionProgress.percent === 100 && (
+              {inspectionProgress.percent === 100 ? (
                 <div className="mt-4 flex items-center gap-2 text-success-600 text-lg font-bold">
                   <CheckCircle2 size={24} />
                   检查完成
                 </div>
-              )}
+              ) : inspectionStatus === 'inspecting' ? (
+                <div className="mt-4 flex items-center gap-2 text-primary-600 text-lg font-bold">
+                  <ArrowRight size={20} className="animate-pulse" />
+                  正在检查中 · {inspectionAreas.find((a) => !a.confirmed)?.name || ''}
+                </div>
+              ) : vehicleStatus === 'stopped' && !reviewCompleted ? (
+                <div className="mt-4 flex items-center gap-2 text-danger-600 text-lg font-bold animate-pulse">
+                  <AlertTriangle size={20} />
+                  等待开始检查
+                </div>
+              ) : null}
             </button>
 
             <button
               onClick={() => navigate('/rollcall')}
-              className="card-base group hover:scale-[1.02] transition-all duration-300 text-left border-4 border-transparent hover:border-secondary-300"
+              className={`card-base group hover:scale-[1.02] transition-all duration-300 text-left border-4 ${
+                inspectionProgress.percent === 100 && rollcallProgress.percent < 100
+                  ? 'border-secondary-400 ring-2 ring-secondary-200'
+                  : 'border-transparent hover:border-secondary-300'
+              }`}
             >
-              <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-secondary-400 to-secondary-600 flex items-center justify-center mb-6 shadow-lg group-hover:shadow-secondary-300/50 transition-shadow">
+              <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-secondary-400 to-secondary-600 flex items-center justify-center mb-6 shadow-lg group-hover:shadow-secondary-300/50 transition-shadow relative">
                 <Users size={48} className="text-white" />
+                {inspectionProgress.percent === 100 && rollcallProgress.percent < 100 && (
+                  <span className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-danger-500 animate-pulse" />
+                )}
               </div>
               <h2 className="text-3xl font-black text-gray-800 mb-2">儿童点名</h2>
               <p className="text-lg text-gray-500 mb-4">核对儿童交接状态</p>
@@ -142,12 +178,17 @@ export default function Home() {
                   {rollcallProgress.done}/{rollcallProgress.total}
                 </span>
               </div>
-              {rollcallProgress.percent === 100 && (
+              {rollcallProgress.percent === 100 ? (
                 <div className="mt-4 flex items-center gap-2 text-success-600 text-lg font-bold">
                   <CheckCircle2 size={24} />
                   全部交接完成
                 </div>
-              )}
+              ) : inspectionProgress.percent === 100 && rollcallProgress.percent < 100 ? (
+                <div className="mt-4 flex items-center gap-2 text-secondary-600 text-lg font-bold">
+                  <ArrowRight size={20} className="animate-pulse" />
+                  待交接 {rollcallProgress.total - rollcallProgress.done} 人
+                </div>
+              ) : null}
             </button>
 
             <button

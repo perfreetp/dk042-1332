@@ -12,6 +12,8 @@ import {
   RefreshCw,
   User,
   X,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
 import { mockChildren, mockClasses } from '@/data/mockData';
@@ -60,6 +62,7 @@ export default function Rollcall() {
   const { rollcallRecords, setChildStatus, resetRollcall, selectedClasses } = useAppStore();
   const [activeClassId, setActiveClassId] = useState<string>('all');
   const [selectedChild, setSelectedChild] = useState<string | null>(null);
+  const [pendingExpanded, setPendingExpanded] = useState(true);
 
   const stats = useMemo(() => {
     const total = rollcallRecords.length;
@@ -73,8 +76,7 @@ export default function Rollcall() {
 
   const pendingChildren = useMemo(() => {
     return mockChildren
-      .filter((c) => rollcallRecords.find((r) => r.childId === c.id)?.status === 'pending')
-      .slice(0, 8);
+      .filter((c) => rollcallRecords.find((r) => r.childId === c.id)?.status === 'pending');
   }, [rollcallRecords]);
 
   const filteredChildren = useMemo(() => {
@@ -128,43 +130,55 @@ export default function Rollcall() {
       </div>
 
       {pendingChildren.length > 0 && (
-        <div className="px-8 py-5 bg-gradient-to-r from-danger-50 to-amber-50 border-b-2 border-danger-200">
-          <div className="flex items-center gap-4 mb-3">
-            <div className="w-12 h-12 rounded-2xl bg-danger-500 text-white flex items-center justify-center animate-pulse">
-              <AlertCircle size={28} />
+        <div className="px-8 py-4 bg-gradient-to-r from-danger-50 to-amber-50 border-b-2 border-danger-200">
+          <button
+            onClick={() => setPendingExpanded(!pendingExpanded)}
+            className="w-full flex items-center justify-between mb-2"
+          >
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-danger-500 text-white flex items-center justify-center animate-pulse">
+                <AlertCircle size={28} />
+              </div>
+              <div className="text-left">
+                <h3 className="text-2xl font-black text-danger-700">
+                  尚未完成交接（{pendingChildren.length}人）
+                </h3>
+                <p className="text-lg text-danger-600">点击{pendingExpanded ? '收起' : '展开'}查看全部名单</p>
+              </div>
             </div>
-            <div>
-              <h3 className="text-2xl font-black text-danger-700">尚未完成交接（{pendingChildren.length}人）</h3>
-              <p className="text-lg text-danger-600">请尽快完成以下儿童的交接确认</p>
+            <div className="w-10 h-10 rounded-xl bg-danger-100 flex items-center justify-center">
+              {pendingExpanded ? <ChevronUp size={24} className="text-danger-600" /> : <ChevronDown size={24} className="text-danger-600" />}
             </div>
-          </div>
-          <div className="flex gap-4 overflow-x-auto scrollbar-thin pb-2">
-            {pendingChildren.map((child) => {
-              const cls = mockClasses.find((c) => c.id === child.classId);
-              return (
-                <button
-                  key={child.id}
-                  onClick={() => setSelectedChild(child.id)}
-                  className="flex-shrink-0 p-4 rounded-3xl bg-white border-2 border-danger-300 hover:border-danger-500 hover:shadow-lg transition-all shadow"
-                >
-                  <div className="relative">
-                    <img
-                      src={child.avatar}
-                      alt={child.name}
-                      className="w-20 h-20 rounded-full border-4 border-danger-200 bg-gray-100"
-                    />
-                    <div
-                      className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full text-white text-xs font-bold flex items-center justify-center shadow"
-                      style={{ backgroundColor: cls?.color || '#888' }}
-                    >
-                      {cls?.name.slice(0, 2) || ''}
+          </button>
+          {pendingExpanded && (
+            <div className="flex gap-4 overflow-x-auto scrollbar-thin pb-2">
+              {pendingChildren.map((child) => {
+                const cls = mockClasses.find((c) => c.id === child.classId);
+                return (
+                  <button
+                    key={child.id}
+                    onClick={() => setSelectedChild(child.id)}
+                    className="flex-shrink-0 p-4 rounded-3xl bg-white border-2 border-danger-300 hover:border-danger-500 hover:shadow-lg transition-all shadow"
+                  >
+                    <div className="relative">
+                      <img
+                        src={child.avatar}
+                        alt={child.name}
+                        className="w-20 h-20 rounded-full border-4 border-danger-200 bg-gray-100"
+                      />
+                      <div
+                        className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full text-white text-xs font-bold flex items-center justify-center shadow"
+                        style={{ backgroundColor: cls?.color || '#888' }}
+                      >
+                        {cls?.name.slice(0, 2) || ''}
+                      </div>
                     </div>
-                  </div>
-                  <p className="text-xl font-bold text-center mt-2 text-gray-800">{child.name}</p>
-                </button>
-              );
-            })}
-          </div>
+                    <p className="text-xl font-bold text-center mt-2 text-gray-800">{child.name}</p>
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 
